@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react"
 
 import { ArrowLeft } from "lucide-react"
 import { Button } from "../components/ui/button"
+import { EXPLANATION_SYSTEM_PROMPT } from "@/lib/prompts"
 import Link from "next/link"
 import { Textarea } from "../components/ui/textarea"
 
@@ -40,29 +41,51 @@ export default function ExplanationPage() {
     // Try to find an existing session for this corrected text
     let session = chatHistory.find(h => h.correctedText === storedText)
 
-    // If no session exists yet, create a new one with the default GPT explanation
-    if (!session) {
-      session = {
-        id: Date.now(),
-        correctedText: storedText,
-        createdAt: Date.now(),
-        messages: [
-          {
-            sender: "gpt",
-            text:
-              "Here is an explanation of the corrections and improvements made to your text:\n\n" +
-              "1. Improved grammar and punctuation.\n" +
-              "2. Enhanced sentence flow and clarity.\n" +
-              "3. Adjusted word choice to better fit the context.\n\n" +
-              "Feel free to ask any further questions!"
-          }
-        ]
+    const fetchInitialExplanation = async () => {
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            systemPrompt: EXPLANATION_SYSTEM_PROMPT,
+            messages: [
+              {
+                role: "user",
+                content: `Please explain the corrections you made to the following text.\n\nCorrected text:\n${storedText}`
+              }
+            ]
+          })
+        })
+        if (!res.ok) throw new Error("Failed to fetch explanation")
+        const data = await res.json()
+        return data.reply as string
+      } catch (e) {
+        console.error(e)
+        return "Sorry, I couldn't fetch the explanation."
       }
-      chatHistory.push(session)
-      localStorage.setItem("chatHistory", JSON.stringify(chatHistory))
     }
 
-    setMessages(session.messages)
+    const initialise = async () => {
+      if (!session) {
+        const explanation = await fetchInitialExplanation()
+        session = {
+          id: Date.now(),
+          correctedText: storedText,
+          createdAt: Date.now(),
+          messages: [
+            {
+              sender: "gpt",
+              text: explanation
+            }
+          ]
+        }
+        chatHistory.push(session)
+        localStorage.setItem("chatHistory", JSON.stringify(chatHistory))
+      }
+      setMessages(session.messages)
+    }
+
+    initialise()
   }, [])
 
   // Persist messages to localStorage whenever they change
@@ -84,23 +107,37 @@ export default function ExplanationPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // Send a new message and simulate a GPT response
+  // Send a new message through GPT
   const sendMessage = async () => {
-    if (!input.trim()) return
+    if (!input.trim()) return;
 
-    const userMessage: Message = { sender: "user", text: input.trim() }
-    setMessages(prev => [...prev, userMessage])
-    setInput("")
+    const userMessage: Message = { sender: "user", text: input.trim() };
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
+    setInput("");
 
-    // Simulate network / GPT processing delay
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: newMessages.map(m => ({
+            role: m.sender === "user" ? "user" : "assistant",
+            content: m.text
+          }))
+        })
+      });
 
-    const gptResponse: Message = {
-      sender: "gpt",
-      text: "This is a sample response elaborating on your question. \uD83D\uDE0A"
+      if (!res.ok) throw new Error("Failed to get response");
+      const data = await res.json();
+
+      const gptResponse: Message = { sender: "gpt", text: data.reply };
+      setMessages(prev => [...prev, gptResponse]);
+    } catch (error) {
+      console.error(error);
+      alert("Unable to reach GPT. Please try again later.");
     }
-    setMessages(prev => [...prev, gptResponse])
-  }
+  };
 
   return (
     <div className="flex flex-col h-screen">

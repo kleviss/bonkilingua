@@ -18,6 +18,7 @@ import { Card, CardContent } from "./components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./components/ui/select"
 import { SetStateAction, useEffect, useState } from "react"
 
+import { AVAILABLE_MODELS } from "@/constants/models"
 import { Button } from "./components/ui/button"
 import Link from "next/link";
 import { Progress } from "@radix-ui/react-progress"
@@ -59,6 +60,8 @@ export default function LanguageLearnerApp() {
   const [autoDetect, setAutoDetect] = useState(true)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [selectedModel, setSelectedModel] = useState("gpt-3.5-turbo")
+  // Track copy status for the "Copy Corrected Text" button
+  const [isCopied, setIsCopied] = useState(false)
 
   const [bonkActivity] = useState<BonkActivity[]>([
     { id: "1", amount: 100, description: "Completed daily challenge", type: "challenge" },
@@ -137,36 +140,48 @@ export default function LanguageLearnerApp() {
     setIsAnalyzing(false)
   }
 
-  // Simulate AI text correction
+  // AI text correction via OpenAI
   const correctText = async () => {
-    if (!inputText.trim()) return
+    if (!inputText.trim()) return;
 
-    setIsLoading(true)
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/correct", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: inputText,
+          model: selectedModel,
+          language: selectedLanguage
+        })
+      });
 
-    const mockCorrections = [
-      "Here's your polished text with improved grammar and clarity: ",
-      "I've enhanced your writing with better structure and flow: ",
-      "Your text has been corrected for grammar and style: "
-    ]
+      if (!res.ok) {
+        throw new Error("Failed to fetch correction");
+      }
 
-    const randomCorrection = mockCorrections[Math.floor(Math.random() * mockCorrections.length)]
-    setCorrectedText(randomCorrection + inputText.trim())
+      const data = await res.json();
+      setCorrectedText(data.corrected);
 
-    // Award BONK points
-    const bonkEarned = Math.floor(Math.random() * 10) + 5
-    const newUserData = {
-      ...userData,
-      bonkPoints: userData.bonkPoints + bonkEarned,
-      totalCorrections: userData.totalCorrections + 1,
-      languagesLearned: userData.languagesLearned.includes(selectedLanguage)
-        ? userData.languagesLearned
-        : [...userData.languagesLearned, selectedLanguage]
+      // Award BONK points
+      const bonkEarned = Math.floor(Math.random() * 10) + 5;
+      const newUserData = {
+        ...userData,
+        bonkPoints: userData.bonkPoints + bonkEarned,
+        totalCorrections: userData.totalCorrections + 1,
+        languagesLearned: userData.languagesLearned.includes(selectedLanguage)
+          ? userData.languagesLearned
+          : [...userData.languagesLearned, selectedLanguage]
+      };
+
+      saveUserData(newUserData);
+    } catch (error) {
+      console.error(error);
+      alert("Something went wrong while contacting GPT. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-
-    saveUserData(newUserData)
-    setIsLoading(false)
-  }
+  };
 
   const languages = [
     { value: "english", label: "English" },
@@ -177,10 +192,7 @@ export default function LanguageLearnerApp() {
     { value: "portuguese", label: "Portuguese" }
   ]
 
-  const models = [
-    { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
-    { value: "gpt-4o", label: "GPT-4o" }
-  ]
+  const models = AVAILABLE_MODELS
 
   const rewards = [
     {
@@ -334,6 +346,11 @@ export default function LanguageLearnerApp() {
     </>
   )
 
+  // Reset copied state when the corrected text changes (e.g., after a new correction)
+  useEffect(() => {
+    setIsCopied(false)
+  }, [correctedText])
+
   if (activeTab === "home") {
     return (
       <>
@@ -441,10 +458,14 @@ export default function LanguageLearnerApp() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="mt-3 w-full border-green-300 text-green-700 hover:bg-green-100"
-                    onClick={() => navigator.clipboard.writeText(correctedText)}
+                    className={`mt-3 w-full border-green-300 text-green-700 hover:bg-green-100 ${isCopied ? 'animate-bounce border-green-500 bg-green-50' : ''}`}
+                    onClick={() => {
+                      navigator.clipboard.writeText(correctedText)
+                      setIsCopied(true)
+                      setTimeout(() => setIsCopied(false), 2000)
+                    }}
                   >
-                    Copy Corrected Text
+                    {isCopied ? "Copied!" : "Copy Corrected Text"}
                   </Button>
                   <Button
                     variant="outline"
