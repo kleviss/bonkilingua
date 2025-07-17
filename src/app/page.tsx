@@ -11,6 +11,7 @@ import {
   Menu,
   MessageSquare,
   Star,
+  X,
   Zap
 } from "lucide-react"
 import { Card, CardContent } from "./components/ui/card"
@@ -18,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { SetStateAction, useEffect, useState } from "react"
 
 import { Button } from "./components/ui/button"
+import Link from "next/link";
 import { Progress } from "@radix-ui/react-progress"
 import { Textarea } from "./components/ui/textarea"
 
@@ -55,6 +57,8 @@ export default function LanguageLearnerApp() {
   const [activeTab, setActiveTab] = useState<"home" | "learn" | "rewards">("home")
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [autoDetect, setAutoDetect] = useState(true)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [selectedModel, setSelectedModel] = useState("gpt-3.5-turbo")
 
   const [bonkActivity] = useState<BonkActivity[]>([
     { id: "1", amount: 100, description: "Completed daily challenge", type: "challenge" },
@@ -109,13 +113,13 @@ export default function LanguageLearnerApp() {
     }
 
     // Italian patterns
-    if (cleanText.match(/\b(il|la|lo|gli|le|un|una|uno|di|da|in|con|su|per|tra|fra|a|del|della|dello|dei|delle|degli|dal|dalla|dallo|dai|dalle|dagli|nel|nella|nello|nei|nelle|negli|col|coi|colla|colle|collo|sul|sulla|sullo|sui|sulle|sugli|e|o|ma|non|è|sono|era|erano|tenho|tens|tem|temos|tendes|têm|tinha|tinhas|tinha|tínhamos|tínheis|tinham|serei|serás|será|seremos|sereis|serão|eu|tu|ele|ela|nós|vós|eles|elas|meu|teu|seu|nosso|vosso|seu|tempo|ano|dia|casa|vida|mundo|paese|città|lavoro|persona|uomo|donna|bambino|parte|posto|modo|caso|grupo|problema|mão|olho|água|fogo|terra|ar|sol|lua|estrela|céu|mar|rio|montanha|árvore|flor|animal|cão|gato|uccello|pesce|cibo|pane|acqua|latte|caffè|tè|birra|vino|carne|pollo|pesce|verdura|frutta|mela|arancia|banana|limão|tomate|batata|arroz|massa|queijo|ovo|açúcar|sal|azeite|manteiga|gelado|chocolate|doce|amargo|salgado|picante|quente|frio|grande|pequeno|alto|baixo|comprido|curto|largo|estreito|grosso|fino|pesado|leve|duro|mole|liso|rugoso|limpo|sujo|novo|velho|jovem|velho|bom|mau|bonito|feio|fácil|difícil|rápido|lento|forte|fraco|rico|pobre|feliz|triste|contente|zangado|surpreso|assustado|cansado|doente|saudável|com fome|com sede|calor|frio|dor|amor|ódio|medo|esperança|sonho|realidade|verdade|mentira|paz|guerra|liberdade|escravidão|justiça|injustiça|bem|mal|certo|errado|possível|impossível|necessário|desnecessário|importante|senza importanza|interessante|aborrecido|divertido|sério|cómico|trágico|romântico|misterioso|aventureiro|perigoso|seguro|arriscado|confiável|não confiável|honesto|desonesto|amável|cruel|generoso|egoísta|paciente|impaciente|corajoso|codardo|inteligente|estúpido|sábio|ignorante|educado|mal educado|cortês|grosseiro|simpático|antipático|tímido|extrovertido|otimista|pessimista|realista|idealista|conservatore|liberale|tradizionale|moderno|classico|contemporaneo|antico|recente|passato|presente|futuro|prima|dopo|durante|mentre|fino|da|per|senza|con|contro|tra|sopra|sotto|dentro|fuori|vicino|lontano|qui|lì|dove|quando|come|perché|cosa|chi|quale|quanto|quando|dove|sì|no|forse|sicuramente|probabilmente|possivelmente|definitivamente|absolutamente|completamente|totalmente|parcialmente|quase|apenas|só|unicamente|especialmente|particularmente|geralmente|normalmente|habitualmente|frequentemente|raramente|nunca|sempre|às vezes|de vez em quando|todos os dias|cada dia|uma vez|duas vezes|muitas vezes|poucas vezes|primeira vez|última vez|próxima vez|esta vez|essa vez|agora|então|depois|antes|entretanto|ao mesmo tempo|no fim|no início|no meio|finalmente|enfim|em conclusão|em resumo|por exemplo|ou seja|além disso|também|também não|no entanto|contudo|pelo contrário|em contrapartida|por outro lado|de facto|na realidade|efetivamente|certamente|obviamente|claramente|naturalmente|logicamente|razoavelmente|compreensivelmente|felizmente|infelizmente|por sorte|por azar|graças a deus|oxalá|se deus quiser|meu deus|por favor|obrigado|de nada|desculpa|desculpe|lamento|não há problema|está bem|muito bem|perfeito|excelente|fantástico|maravilhoso|incrível|impressionante|surpreendente|extraordinário|espetacular|magnífico|estupendo|genial|fabuloso|ótimo|muito bom|péssimo|horrível|terrível|assustador|nojento|repugnante|desagradável|chato|aborrecido|irritante|insuportável|inaceitável|intolerável)/)) {
+    if (cleanText.match(/\b(il|la|lo|gli|le|un|una|uno|di|da|in|con|su|per|tra|fra|a|del|della|dello|dei|delle|degli|dal|dalla|dallo|dai|dalle|dagli|nel|nella|nello|nei|nelle|negli|col|coi|colla|colle|collo|sul|sulla|sullo|sui|sulle|sugli|e|o|ma|non|è|sono|era|erano|tenho|tens|tem|temos|tendes|têm|tinha|tinhas|tinha|tínhamos|tínheis|tinham|serei|serás|será|seremos|sereis|serão|eu|tu|ele|ela|nós|vós|eles|elas|meu|teu|seu|nosso|vosso|seu|tempo|ano|dia|casa|vida|mundo|paese|città|lavoro|persona|uomo|donna|bambino|parte|posto|modo|caso|grupo|problema|mão|olho|água|fogo|terra|ar|sol|lua|estrela|céu|mar|rio|montanha|árvore|flor|animal|cão|gato|uccello|pesce|cibo|pane|acqua|latte|caffè|tè|birra|vino|carne|pollo|pesce|verdura|frutta|mela|arancia|banana|limão|tomate|batata|arroz|massa|queijo|ovo|açúcar|sal|azeite|manteiga|gelado|chocolate|doce|amargo|salgado|picante|quente|frio|grande|pequeno|alto|baixo|comprido|curto|largo|estreito|grosso|fino|pesado|leve|duro|mole|liso|rugoso|limpo|sujo|novo|velho|jovem|velho|bom|mau|bonito|feio|fácil|difícil|rápido|lento|forte|fraco|rico|pobre|feliz|triste|contente|zangado|surpreso|assustado|cansado|doente|saudável|com fome|com sede|calor|frio|dor|amor|ódio|medo|esperança|sonho|realidade|verdade|mentira|paz|guerra|liberdade|escravidão|justiça|injustiça|bem|mal|certo|errado|possível|impossível|necessário|desnecessário|importante|senza importanza|interessante|aborrecido|divertido|sério|cómico|trágico|romântico|misterioso|aventureiro|perigoso|seguro|arriscado|confiável|não confiável|honesto|desonesto|amável|cruel|generoso|egoísta|paciente|impaciente|corajoso|codardo|inteligente|estúpido|sábio|ignorante|educado|mal educado|cortês|grosseiro|simpático|antipático|tímido|extrovertido|otimista|pessimista|realista|idealista|conservatore|liberale|tradizionale|moderno|classico|contemporaneo|antico|recente|passato|presente|futuro|prima|dopo|durante|mentre|fino|da|per|senza|con|contro|tra|sopra|sotto|dentro|fuori|vicino|lontano|qui|lì|dove|quando|come|perché|cosa|chi|quale|quanto|quando|dove|sim|não|talvez|certamente|provavelmente|possivelmente|definitivamente|absolutamente|completamente|totalmente|parcialmente|quase|apenas|só|unicamente|especialmente|particularmente|geralmente|normalmente|habitualmente|frequentemente|raramente|nunca|sempre|às vezes|de vez em quando|todos os dias|cada dia|uma vez|duas vezes|muitas vezes|poucas vezes|primeira vez|última vez|próxima vez|esta vez|essa vez|agora|então|depois|antes|entretanto|ao mesmo tempo|no fim|no início|no meio|finalmente|enfim|em conclusão|em resumo|por exemplo|ou seja|além disso|também|também não|no entanto|contudo|pelo contrário|em contrapartida|por outro lado|de facto|na realidade|efetivamente|certamente|obviamente|claramente|naturalmente|logicamente|razoavelmente|compreensivelmente|felizmente|infelizmente|por sorte|por azar|graças a deus|oxalá|se deus quiser|meu deus|por favor|obrigado|de nada|desculpa|desculpe|lamento|não há problema|está bem|muito bem|perfeito|excelente|fantástico|maravilhoso|incrível|impressionante|surpreendente|extraordinário|espetacular|magnífico|estupendo|genial|fabuloso|ótimo|muito bom|péssimo|horrível|terrível|assustador|nojento|repugnante|desagradável|chato|aborrecido|irritante|insuportável|inaceitável|intolerável)/)) {
       setDetectedLanguage("italian")
       return
     }
 
     // Portuguese patterns
-    if (cleanText.match(/\b(o|a|os|as|um|uma|uns|umas|de|da|do|das|dos|em|na|no|nas|nos|com|para|por|entre|sobre|sob|dentro|fora|perto|longe|e|ou|mas|não|é|são|era|eram|tenho|tens|tem|temos|tendes|têm|tinha|tinhas|tinha|tínhamos|tínheis|tinham|serei|serás|será|seremos|sereis|serão|eu|tu|ele|ela|nós|vós|eles|elas|meu|teu|seu|nosso|vosso|seu|tempo|ano|dia|casa|vida|mundo|país|cidade|trabalho|pessoa|homem|mulher|criança|parte|lugar|forma|caso|grupo|problema|mão|olho|água|fogo|terra|ar|sol|lua|estrela|céu|mar|rio|montanha|árvore|flor|animal|cão|gato|pássaro|peixe|comida|pão|água|leite|café|chá|cerveja|vinho|carne|frango|peixe|verdura|fruta|maçã|laranja|banana|limão|tomate|batata|arroz|massa|queijo|ovo|açúcar|sal|azeite|manteiga|gelado|chocolate|doce|amargo|salgado|picante|quente|frio|grande|pequeno|alto|baixo|comprido|curto|largo|estreito|grosso|fino|pesado|leve|duro|mole|liso|rugoso|limpo|sujo|novo|velho|jovem|velho|bom|mau|bonito|feio|fácil|difícil|rápido|lento|forte|fraco|rico|pobre|feliz|triste|contente|zangado|surpreso|assustado|cansado|doente|saudável|com fome|com sede|calor|frio|dor|amor|ódio|medo|esperança|sonho|realidade|verdade|mentira|paz|guerra|liberdade|escravidão|justiça|injustiça|bem|mal|certo|errado|possível|impossível|necessário|desnecessário|importante|senza importância|interessante|aborrecido|divertido|sério|cómico|trágico|romântico|misterioso|aventureiro|perigoso|seguro|arriscado|confiável|não confiável|honesto|desonesto|amável|cruel|generoso|egoísta|paciente|impaciente|corajoso|codardo|inteligente|estúpido|sábio|ignorante|educado|mal educado|cortês|grosseiro|simpático|antipático|tímido|extrovertido|otimista|pessimista|realista|idealista|conservador|liberal|tradizionale|moderno|classico|contemporaneo|antigo|recente|passado|presente|futuro|antes|depois|durante|enquanto|até|desde|para|por|sem|com|contra|entre|sobre|sob|dentro|fora|perto|longe|aqui|ali|onde|quando|como|porquê|o que|quem|qual|quanto|quando|onde|sim|não|talvez|certamente|provavelmente|possivelmente|definitivamente|absolutamente|completamente|totalmente|parcialmente|quase|apenas|só|unicamente|especialmente|particularmente|geralmente|normalmente|habitualmente|frequentemente|raramente|nunca|sempre|às vezes|de vez em quando|todos os dias|cada dia|uma vez|duas vezes|muitas vezes|poucas vezes|primeira vez|última vez|próxima vez|esta vez|essa vez|agora|então|depois|antes|entretanto|ao mesmo tempo|no fim|no início|no meio|finalmente|enfim|em conclusão|em resumo|por exemplo|ou seja|além disso|também|também não|no entanto|contudo|pelo contrário|em contrapartida|por outro lado|de facto|na realidade|efetivamente|certamente|obviamente|claramente|naturalmente|logicamente|razoavelmente|compreensivelmente|felizmente|infelizmente|por sorte|por azar|graças a deus|oxalá|se deus quiser|meu deus|por favor|obrigado|de nada|desculpa|desculpe|lamento|não há problema|está bem|muito bem|perfeito|excelente|fantástico|maravilhoso|incrível|impressionante|surpreendente|extraordinário|espetacular|magnífico|estupendo|genial|fabuloso|ótimo|muito bom|péssimo|horrível|terrível|assustador|nojento|repugnante|desagradável|chato|aborrecido|irritante|insuportável|inaceitável|intolerável)/)) {
+    if (cleanText.match(/\b(o|a|os|as|um|uma|uns|umas|de|da|do|das|dos|em|na|no|nas|nos|com|para|por|entre|sobre|sob|dentro|fora|perto|longe|e|ou|mas|não|é|são|era|eram|tenho|tens|tem|temos|tendes|têm|tinha|tinhas|tinha|tínhamos|tínheis|tinham|serei|serás|será|seremos|sereis|serão|eu|tu|ele|ela|nós|vós|eles|elas|meu|teu|seu|nosso|vosso|seu|tempo|ano|dia|casa|vida|mundo|país|cidade|trabalho|pessoa|homem|mulher|criança|parte|lugar|forma|caso|grupo|problema|mão|olho|água|fogo|terra|ar|sol|lua|estrela|céu|mar|rio|montanha|árvore|flor|animal|cão|gato|pássaro|peixe|comida|pão|água|leite|café|chá|cerveja|vinho|carne|frango|peixe|verdura|fruta|maçã|laranja|banana|limão|tomate|batata|arroz|massa|queijo|ovo|açúcar|sal|azeite|manteiga|gelado|chocolate|doce|amargo|salgado|picante|quente|frio|grande|pequeno|alto|baixo|comprido|curto|largo|estreito|grosso|fino|pesado|leve|duro|mole|liso|rugoso|limpo|sujo|novo|velho|jovem|velho|bom|mau|bonito|feio|fácil|difícil|rápido|lento|forte|fraco|rico|pobre|feliz|triste|contente|zangado|surpreso|assustado|cansado|doente|saudável|com fome|com sede|calor|frio|dor|amor|ódio|medo|esperança|sonho|realidade|verdade|mentira|paz|guerra|liberdade|escravidão|justiça|injustiça|bem|mal|certo|errado|possível|impossível|necessário|desnecessário|importante|senza importância|interessante|aborrecido|divertido|sério|cómico|trágico|romântico|misterioso|aventureiro|perigoso|seguro|arriscado|confiável|não confiável|honesto|desonesto|amável|cruel|generoso|egoísta|paciente|impaciente|corajoso|codardo|inteligente|estúpido|sábio|ignorante|educado|mal educado|cortês|grosseiro|simpático|antipático|tímido|extrovertido|otimista|pessimista|realista|idealista|conservador|liberal|tradizionale|moderno|classico|contemporaneo|antigo|recente|passado|presente|futuro|antes|depois|durante|enquanto|até|desde|para|por|sem|com|contra|entre|sobre|sob|dentro|fora|perto|longe|aqui|ali|onde|quando|como|porquê|o que|quem|qual|quanto|quando|dove|sim|não|talvez|certamente|provavelmente|possivelmente|definitivamente|absolutamente|completamente|totalmente|parcialmente|quase|apenas|só|unicamente|especialmente|particularmente|geralmente|normalmente|habitualmente|frequentemente|raramente|nunca|sempre|às vezes|de vez em quando|todos os dias|cada dia|uma vez|duas vezes|muitas vezes|poucas vezes|primeira vez|última vez|próxima vez|esta vez|essa vez|agora|então|depois|antes|entretanto|ao mesmo tempo|no fim|no início|no meio|finalmente|enfim|em conclusão|em resumo|por exemplo|ou seja|além disso|também|também não|no entanto|contudo|pelo contrário|em contrapartida|por outro lado|de facto|na realidade|efetivamente|certamente|obviamente|claramente|naturalmente|logicamente|razoavelmente|compreensivelmente|felizmente|infelizmente|por sorte|por azar|graças a deus|oxalá|se deus quiser|meu deus|por favor|obrigado|de nada|desculpa|desculpe|lamento|não há problema|está bem|muito bem|perfeito|excelente|fantástico|maravilhoso|incrível|impressionante|surpreendente|extraordinário|espetacular|magnífico|estupendo|genial|fabuloso|ótimo|muito bom|péssimo|horrível|terrível|assustador|nojento|repugnante|desagradável|chato|aborrecido|irritante|insuportável|inaceitável|intolerável)/)) {
       setDetectedLanguage("portuguese")
       return
     }
@@ -171,6 +175,11 @@ export default function LanguageLearnerApp() {
     { value: "german", label: "German" },
     { value: "italian", label: "Italian" },
     { value: "portuguese", label: "Portuguese" }
+  ]
+
+  const models = [
+    { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
+    { value: "gpt-4o", label: "GPT-4o" }
   ]
 
   const rewards = [
@@ -264,6 +273,67 @@ export default function LanguageLearnerApp() {
     </div>
   )
 
+  // Sidebar component
+  const Sidebar = () => (
+    <>
+      <div
+        className="fixed inset-0 bg-black/30 z-40"
+        onClick={() => setIsSidebarOpen(false)}
+      />
+      <div className="fixed right-0 top-0 bottom-0 w-72 max-w-[80%] bg-white shadow-lg z-50 flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-lg font-semibold text-gray-900">Menu</h2>
+          <X
+            className="h-5 w-5 text-gray-600 cursor-pointer"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        </div>
+        <div className="p-4 flex-1 overflow-y-auto space-y-4">
+          <Link
+            href="/profile"
+            onClick={() => setIsSidebarOpen(false)}
+            className="block w-full text-left py-2 px-3 rounded-md hover:bg-gray-100 text-sm font-medium text-gray-700"
+          >
+            Profile
+          </Link>
+          <Link
+            href="/settings"
+            onClick={() => setIsSidebarOpen(false)}
+            className="block w-full text-left py-2 px-3 rounded-md hover:bg-gray-100 text-sm font-medium text-gray-700"
+          >
+            Settings
+          </Link>
+          <Link
+            href="/history"
+            onClick={() => setIsSidebarOpen(false)}
+            className="block w-full text-left py-2 px-3 rounded-md hover:bg-gray-100 text-sm font-medium text-gray-700"
+          >
+            History
+          </Link>
+          <div className="space-y-2">
+            <span className="text-sm font-medium text-gray-600">GPT Model</span>
+            <Select
+              value={selectedModel}
+              onValueChange={(value: SetStateAction<string>) => setSelectedModel(value)}
+            >
+              <SelectTrigger className="bg-white border-gray-200">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {models.map((model) => (
+                  <SelectItem key={model.value} value={model.value}>
+                    {model.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="mt-auto text-xs text-gray-500">App version: 1.0.0</div>
+        </div>
+      </div>
+    </>
+  )
+
   if (activeTab === "home") {
     return (
       <>
@@ -271,7 +341,12 @@ export default function LanguageLearnerApp() {
         <div className="px-6 py-4 border-b border-gray-100 bg-white">
           <div className="flex items-center justify-between">
             <h1 className="text-lg font-semibold text-gray-900">Bonkilingo</h1>
-            <Menu className="h-5 w-5 text-gray-600" />
+            <button onClick={() => {
+              setIsSidebarOpen(true);
+              console.log("sidebar open");
+            }}>
+              <Menu className="h-5 w-5 text-gray-600" />
+            </button>
           </div>
         </div>
 
@@ -371,6 +446,19 @@ export default function LanguageLearnerApp() {
                   >
                     Copy Corrected Text
                   </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 w-full border-blue-300 text-blue-700 hover:bg-blue-100"
+                    onClick={() => {
+                      if (correctedText) {
+                        localStorage.setItem("correctedText", correctedText)
+                      }
+                    }}
+                    asChild
+                  >
+                    <Link href="/explanation">Show Explanation</Link>
+                  </Button>
                 </CardContent>
               </Card>
             ) : (
@@ -381,6 +469,7 @@ export default function LanguageLearnerApp() {
           </div>
         </div>
 
+        {isSidebarOpen && <Sidebar />}
         <BottomNavigation />
       </>
     )
@@ -393,7 +482,9 @@ export default function LanguageLearnerApp() {
         <div className="px-6 py-4 border-b border-gray-100 bg-white">
           <div className="flex items-center justify-between">
             <h1 className="text-lg font-semibold text-gray-900">Learn</h1>
-            <Menu className="h-5 w-5 text-gray-600" />
+            <button onClick={() => setIsSidebarOpen(true)}>
+              <Menu className="h-5 w-5 text-gray-600" />
+            </button>
           </div>
         </div>
 
@@ -449,6 +540,7 @@ export default function LanguageLearnerApp() {
           </div>
         </div>
 
+        {isSidebarOpen && <Sidebar />}
         <BottomNavigation />
       </>
     )
@@ -534,6 +626,7 @@ export default function LanguageLearnerApp() {
           </div>
         </div>
 
+        {isSidebarOpen && <Sidebar />}
         <BottomNavigation />
       </>
     )
