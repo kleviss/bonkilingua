@@ -573,7 +573,9 @@ export default function LanguageLearnerApp() {
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-100 bg-white">
           <div className="flex items-center justify-between">
-            <ArrowLeft className="h-5 w-5 text-gray-600" />
+            <button onClick={() => setActiveTab("home")}>
+              <ArrowLeft className="h-5 w-5 text-gray-600" />
+            </button>
             <h1 className="text-lg font-semibold text-gray-900">Rewards</h1>
             <div></div>
           </div>
