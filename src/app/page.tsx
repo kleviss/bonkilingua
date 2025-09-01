@@ -62,6 +62,7 @@ export default function LanguageLearnerApp() {
   const [selectedModel, setSelectedModel] = useState("gpt-3.5-turbo")
   // Track copy status for the "Copy Corrected Text" button
   const [isCopied, setIsCopied] = useState(false)
+  const [isDetecting, setIsDetecting] = useState(false)
 
   const [bonkActivity] = useState<BonkActivity[]>([
     { id: "1", amount: 100, description: "Completed daily challenge", type: "challenge" },
@@ -78,12 +79,48 @@ export default function LanguageLearnerApp() {
     }
   }, [])
 
-  // Auto-detect language when text changes
+  // Auto-detect language when text changes (debounced + server-side detection)
   useEffect(() => {
-    if (inputText.trim() && autoDetect) {
-      detectLanguage(inputText)
-    } else {
+    if (!autoDetect) {
       setDetectedLanguage(null)
+      return
+    }
+    const text = inputText.trim()
+    const hasEnoughSignal = text.length >= 15 && text.split(/\s+/).length >= 3
+    if (!hasEnoughSignal) {
+      setIsDetecting(false)
+      setDetectedLanguage(null)
+      return
+    }
+    setIsDetecting(true)
+    const controller = new AbortController()
+    const handle = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/detect-language", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+          signal: controller.signal
+        })
+        if (!res.ok) throw new Error("Failed to detect language")
+        const data = await res.json()
+        const lang = typeof data.language === "string" ? data.language : "unknown"
+        if (lang !== "unknown") setDetectedLanguage(lang)
+        else setDetectedLanguage(null)
+      } catch (err: unknown) {
+        const errorName = (typeof err === 'object' && err !== null && 'name' in err && typeof (err as { name?: unknown }).name === 'string')
+          ? (err as { name: string }).name
+          : undefined
+        if (errorName !== "AbortError") {
+          console.error(err)
+        }
+      } finally {
+        setIsDetecting(false)
+      }
+    }, 600)
+    return () => {
+      controller.abort()
+      clearTimeout(handle)
     }
   }, [inputText, autoDetect])
 
@@ -93,43 +130,7 @@ export default function LanguageLearnerApp() {
     localStorage.setItem("languageLearnerData", JSON.stringify(newData))
   }
 
-  // Simple language detection simulation
-  const detectLanguage = (text: string) => {
-    const cleanText = text.toLowerCase().trim()
-
-    // Spanish patterns
-    if (cleanText.match(/\b(el|la|los|las|un|una|de|en|que|es|por|para|con|se|no|te|le|da|su|por|más|pero|todo|bien|sí|muy|cuando|donde|como|tiempo|año|día|casa|vida|mundo|país|ciudad|trabajo|persona|hombre|mujer|niño|parte|lugar|forma|caso|grupo|problema|mano|ojo|agua|fuego|tierra|aire|sol|luna|estrella|cielo|mar|río|montaña|árbol|flor|animal|perro|gato|pájaro|pez|comida|pan|agua|leche|café|té|cerveza|vino|carne|pollo|pescado|verdura|fruta|manzana|naranja|plátano|limón|tomate|patata|arroz|pasta|queso|huevo|azúcar|sal|aceite|mantequilla|helado|chocolate|dulce|amargo|salado|picante|caliente|frío|grande|pequeño|alto|bajo|largo|corto|ancho|estrecho|grueso|delgado|pesado|ligero|duro|blando|liso|rugoso|limpio|sucio|nuevo|viejo|joven|viejo|bueno|malo|bonito|feo|fácil|difícil|rápido|lento|fuerte|débil|rico|pobre|feliz|triste|contento|enfadado|sorprendido|asustado|cansado|enfermo|sano|hambriento|sediento|calor|frío|dolor|amor|odio|miedo|esperanza|sueño|realidad|verdad|mentira|paz|guerra|libertad|esclavitud|justicia|injusticia|bien|mal|correcto|incorrecto|posible|imposible|necesario|innecesario|importante|sin importancia|interesante|aburrido|divertido|serio|cómico|trágico|romántico|misterioso|aventurero|peligroso|seguro|arriesgado|confiable|desconfiable|honesto|deshonesto|amable|cruel|generoso|egoísta|paciente|impaciente|valiente|cobarde|inteligente|tonto|sabio|ignorante|educado|maleducado|cortés|grosero|simpático|antipático|tímido|extrovertido|optimista|pesimista|realista|idealista|conservador|liberal|tradicional|moderno|clásico|contemporáneo|antiguo|reciente|pasado|presente|futuro|antes|después|durante|mientras|hasta|desde|para|por|sin|con|contra|entre|sobre|bajo|dentro|fuera|cerca|lejos|aquí|allí|donde|cuando|cómo|por qué|qué|quién|cuál|cuánto|cuándo|dónde|sí|no|tal vez|quizás|seguramente|probablemente|posiblemente|definitivamente|absolutamente|completamente|totalmente|parcialmente|casi|apenas|solamente|únicamente|especialmente|particularmente|generalmente|normalmente|usualmente|frecuentemente|raramente|nunca|siempre|a veces|de vez en cuando|todos los días|cada día|una vez|dos veces|muchas veces|pocas veces|primera vez|última vez|próxima vez|esta vez|esa vez|aquella vez|ahora|entonces|luego|después|antes|mientras tanto|al mismo tiempo|al final|al principio|en el medio|por último|finalmente|en conclusión|en resumen|por ejemplo|es decir|o sea|además|también|tampoco|sin embargo|no obstante|por el contrario|en cambio|por otro lado|de hecho|en realidad|efectivamente|ciertamente|obviamente|evidentemente|claramente|naturalmente|lógicamente|razonablemente|comprensiblemente|afortunadamente|desafortunadamente|por suerte|por desgracia|gracias a dios|ojalá|si dios quiere|dios mío|por favor|gracias|de nada|perdón|disculpe|lo siento|no hay problema|está bien|muy bien|perfecto|excelente|fantástico|maravilloso|increíble|impresionante|sorprendente|extraordinario|espectacular|magnífico|estupendo|genial|fabuloso|bárbaro|buenísimo|malísimo|horrible|terrible|espantoso|asqueroso|repugnante|desagradable|molesto|fastidioso|irritante|insoportable|inaguantable|intolerable)/)) {
-      setDetectedLanguage("spanish")
-      return
-    }
-
-    // French patterns
-    if (cleanText.match(/\b(le|la|les|un|une|des|de|du|en|que|est|pour|avec|se|ne|te|lui|son|sa|ses|plus|mais|tout|bien|très|quand|où|comme|temps|année|jour|maison|vie|monde|pays|ville|travail|personne|homme|femme|enfant|partie|lieu|forme|cas|groupe|problème|main|œil|eau|feu|terre|air|soleil|lune|étoile|ciel|mer|rivière|montagne|arbre|fleur|animal|chien|chat|oiseau|poisson|nourriture|pain|eau|lait|café|thé|bière|vin|viande|poulet|poisson|légume|fruit|pomme|orange|banane|citron|tomate|pomme de terre|riz|pâtes|fromage|œuf|sucre|sel|huile|beurre|glace|chocolat|doux|amer|salé|épicé|chaud|froid|grand|petit|haut|bas|long|court|large|étroit|épais|mince|lourd|léger|dur|mou|lisse|rugueux|propre|sale|nouveau|vieux|jeune|vieux|bon|mauvais|beau|laid|facile|difficile|rapide|lent|fort|faible|riche|pauvre|heureux|triste|content|en colère|surpris|effrayé|fatigué|malade|sain|affamé|assoiffé|chaleur|froid|douleur|amour|haine|peur|espoir|rêve|réalité|vérité|mensonge|paix|guerre|liberté|esclavage|justice|injustice|bien|mal|correct|incorrect|possible|impossible|nécessaire|inutile|important|sans importance|intéressant|ennuyeux|amusant|sérieux|comique|tragique|romantique|mystérieux|aventureux|dangereux|sûr|risqué|fiable|peu fiable|honnête|malhonnête|gentil|cruel|généreux|égoïste|patient|impatient|courageux|lâche|intelligent|stupide|sage|ignorant|poli|impoli|courtois|grossier|sympathique|antipathique|timide|extraverti|optimiste|pessimiste|realiste|idéaliste|conservateur|libéral|traditionnel|moderne|classique|contemporain|antiguo|récent|passé|présent|futur|avant|après|pendant|tandis que|jusqu'à|depuis|pour|par|sans|avec|contre|entre|sur|sous|dans|dehors|près|loin|ici|là|où|quand|comment|pourquoi|quoi|qui|quel|combien|quand|où|oui|non|peut-être|sûrement|probablement|possiblement|définitivement|absolument|complètement|totalement|partiellement|presque|à peine|seulement|uniquement|spécialement|particulièrement|généralement|normalement|habituellement|fréquemment|rarement|jamais|toujours|parfois|de temps en temps|tous les jours|chaque jour|une fois|deux fois|plusieurs fois|peu de fois|première fois|dernière fois|prochaine fois|cette fois|cette fois-là|maintenant|alors|puis|après|avant|en attendant|en même temps|à la fin|au début|au milieu|infine|finalement|en conclusion|en résumé|par exemple|c'est-à-dire|en outre|aussi|non plus|cependant|néanmoins|au contraire|en revanche|d'autre part|en fait|en réalité|effectivement|certainement|évidemment|clairement|naturellement|logiquement|raisonnablement|compréhensiblement|heureusement|malheureusement|par chance|par malheur|grâce à dieu|pourvu que|si dieu le veut|mon dieu|s'il vous plaît|merci|de rien|pardon|excusez-moi|je suis désolé|pas de problème|ça va|très bien|parfait|excellent|fantastique|merveilleux|incroyable|impressionnant|surprenant|extraordinaire|spectaculaire|magnifique|formidable|génial|fabuleux|super|très bon|très mauvais|horrible|terrible|épouvantable|dégoûtant|répugnant|désagréable|gênant|fastidieux|irritant|insupportable|intolérable)/)) {
-      setDetectedLanguage("french")
-      return
-    }
-
-    // German patterns
-    if (cleanText.match(/\b(der|die|das|den|dem|des|ein|eine|eines|einem|einen|einer|und|oder|aber|nicht|ist|sind|war|waren|haben|hat|hatte|hatten|werden|wird|wurde|wurden|sein|ich|du|er|sie|es|wir|ihr|sie|mein|dein|sein|ihr|unser|euer|für|von|zu|mit|nach|bei|über|unter|vor|hinter|zwischen|durch|ohne|gegen|während|seit|bis|um|an|auf|in|im|am|zum|zur|vom|beim|ins|ans|aufs|fürs|durchs|ums|zeit|jahr|tag|haus|leben|welt|land|stadt|arbeit|mensch|mann|frau|kind|teil|ort|art|fall|gruppe|problem|hand|auge|wasser|feuer|erde|luft|sonne|mond|stern|himmel|meer|fluss|berg|baum|blume|tier|hund|katze|vogel|fisch|essen|brot|wasser|milch|kaffee|tee|bier|wein|fleisch|huhn|fisch|gemüse|obst|apfel|orange|banane|zitrone|tomate|kartoffel|reis|nudeln|käse|ei|zucker|salz|öl|butter|eis|schokolade|süß|bitter|salzig|scharf|heiß|kalt|groß|klein|hoch|niedrig|lang|kurz|breit|schmal|dick|dünn|schwer|leicht|hart|weich|glatt|rau|sauber|schmutzig|neu|alt|jung|alt|gut|schlecht|schön|hässlich|einfach|schwer|schnell|langsam|stark|schwach|reich|arm|glücklich|traurig|zufrieden|wütend|überrascht|ängstlich|müde|krank|gesund|hungrig|durstig|hitze|kälte|schmerz|liebe|hass|angst|hoffnung|traum|realität|wahrheit|lüge|frieden|krieg|freiheit|sklaverei|gerechtigkeit|ungerechtigkeit|gut|böse|richtig|falsch|möglich|unmöglich|notwendig|unnötig|wichtig|unwichtig|interessant|langweilig|lustig|ernst|komisch|tragisch|romantisch|geheimnisvoll|abenteuerlich|gefährlich|sicher|riskant|zuverlässig|unzuverlässig|ehrlich|unehrlich|freundlich|grausam|großzügig|egoistisch|geduldig|ungeduldig|mutig|feige|intelligent|dumm|weise|unwissend|höflich|unhöflich|höflich|grob|sympathisch|unsympathisch|schüchtern|extrovertiert|optimista|pessimista|realista|idealista|konservativ|liberal|traditionell|modern|klassisch|zeitgenössisch|alt|neu|vergangenheit|gegenwart|zukunft|vorher|nachher|während|während|bis|seit|für|durch|ohne|mit|gegen|zwischen|über|unter|innerhalb|außerhalb|nah|weit|hier|dort|wo|wann|wie|warum|was|wer|welche|wie viel|wann|wo|ja|nein|vielleicht|sicherlich|wahrscheinlich|möglicherweise|definitiv|absolut|vollständig|total|teilweise|fast|kaum|nur|einzig|besonders|besonders|allgemein|normalerweise|gewöhnlich|häufig|selten|nie|immer|manchmal|von zeit zu zeit|jeden tag|jeden tag|einmal|zweimal|viele male|wenige male|erste mal|letzte mal|nächste mal|dieses mal|damals|jetzt|dann|danach|vorher|inzwischen|gleichzeitig|am ende|am anfang|in der mitte|schließlich|endlich|zusammenfassend|zusammenfassend|zum beispiel|das heißt|außerdem|auch|auch nicht|jedoch|trotzdem|im gegenteil|andererseits|andererseits|tatsächlich|in wirklichkeit|tatsächlich|sicherlich|offensichtlich|klar|natürlich|logisch|vernünftig|verständlich|glücklicherweise|unglücklicherweise|zum glück|leider|gott sei dank|hoffentlich|so gott will|mein gott|bitte|danke|bitte schön|entschuldigung|entschuldigen sie|es tut mir leid|kein problem|es ist okay|sehr gut|perfekt|ausgezeichnet|fantastisch|wunderbar|unglaublich|beeindruckend|überraschend|außergewöhnlich|spektakulär|großartig|toll|genial|fabelhaft|super|sehr gut|sehr schlecht|schrecklich|furchtbar|abscheulich|ekelhaft|widerlich|unangenehm|störend|lästig|irritierend|unerträglich|unzumutbar|untragbar)/)) {
-      setDetectedLanguage("german")
-      return
-    }
-
-    // Italian patterns
-    if (cleanText.match(/\b(il|la|lo|gli|le|un|una|uno|di|da|in|con|su|per|tra|fra|a|del|della|dello|dei|delle|degli|dal|dalla|dallo|dai|dalle|dagli|nel|nella|nello|nei|nelle|negli|col|coi|colla|colle|collo|sul|sulla|sullo|sui|sulle|sugli|e|o|ma|non|è|sono|era|erano|tenho|tens|tem|temos|tendes|têm|tinha|tinhas|tinha|tínhamos|tínheis|tinham|serei|serás|será|seremos|sereis|serão|eu|tu|ele|ela|nós|vós|eles|elas|meu|teu|seu|nosso|vosso|seu|tempo|ano|dia|casa|vida|mundo|paese|città|lavoro|persona|uomo|donna|bambino|parte|posto|modo|caso|grupo|problema|mão|olho|água|fogo|terra|ar|sol|lua|estrela|céu|mar|rio|montanha|árvore|flor|animal|cão|gato|uccello|pesce|cibo|pane|acqua|latte|caffè|tè|birra|vino|carne|pollo|pesce|verdura|frutta|mela|arancia|banana|limão|tomate|batata|arroz|massa|queijo|ovo|açúcar|sal|azeite|manteiga|gelado|chocolate|doce|amargo|salgado|picante|quente|frio|grande|pequeno|alto|baixo|comprido|curto|largo|estreito|grosso|fino|pesado|leve|duro|mole|liso|rugoso|limpo|sujo|novo|velho|jovem|velho|bom|mau|bonito|feio|fácil|difícil|rápido|lento|forte|fraco|rico|pobre|feliz|triste|contente|zangado|surpreso|assustado|cansado|doente|saudável|com fome|com sede|calor|frio|dor|amor|ódio|medo|esperança|sonho|realidade|verdade|mentira|paz|guerra|liberdade|escravidão|justiça|injustiça|bem|mal|certo|errado|possível|impossível|necessário|desnecessário|importante|senza importanza|interessante|aborrecido|divertido|sério|cómico|trágico|romântico|misterioso|aventureiro|perigoso|seguro|arriscado|confiável|não confiável|honesto|desonesto|amável|cruel|generoso|egoísta|paciente|impaciente|corajoso|codardo|inteligente|estúpido|sábio|ignorante|educado|mal educado|cortês|grosseiro|simpático|antipático|tímido|extrovertido|otimista|pessimista|realista|idealista|conservatore|liberale|tradizionale|moderno|classico|contemporaneo|antico|recente|passato|presente|futuro|prima|dopo|durante|mentre|fino|da|per|senza|con|contro|tra|sopra|sotto|dentro|fuori|vicino|lontano|qui|lì|dove|quando|come|perché|cosa|chi|quale|quanto|quando|dove|sim|não|talvez|certamente|provavelmente|possivelmente|definitivamente|absolutamente|completamente|totalmente|parcialmente|quase|apenas|só|unicamente|especialmente|particularmente|geralmente|normalmente|habitualmente|frequentemente|raramente|nunca|sempre|às vezes|de vez em quando|todos os dias|cada dia|uma vez|duas vezes|muitas vezes|poucas vezes|primeira vez|última vez|próxima vez|esta vez|essa vez|agora|então|depois|antes|entretanto|ao mesmo tempo|no fim|no início|no meio|finalmente|enfim|em conclusão|em resumo|por exemplo|ou seja|além disso|também|também não|no entanto|contudo|pelo contrário|em contrapartida|por outro lado|de facto|na realidade|efetivamente|certamente|obviamente|claramente|naturalmente|logicamente|razoavelmente|compreensivelmente|felizmente|infelizmente|por sorte|por azar|graças a deus|oxalá|se deus quiser|meu deus|por favor|obrigado|de nada|desculpa|desculpe|lamento|não há problema|está bem|muito bem|perfeito|excelente|fantástico|maravilhoso|incrível|impressionante|surpreendente|extraordinário|espetacular|magnífico|estupendo|genial|fabuloso|ótimo|muito bom|péssimo|horrível|terrível|assustador|nojento|repugnante|desagradável|chato|aborrecido|irritante|insuportável|inaceitável|intolerável)/)) {
-      setDetectedLanguage("italian")
-      return
-    }
-
-    // Portuguese patterns
-    if (cleanText.match(/\b(o|a|os|as|um|uma|uns|umas|de|da|do|das|dos|em|na|no|nas|nos|com|para|por|entre|sobre|sob|dentro|fora|perto|longe|e|ou|mas|não|é|são|era|eram|tenho|tens|tem|temos|tendes|têm|tinha|tinhas|tinha|tínhamos|tínheis|tinham|serei|serás|será|seremos|sereis|serão|eu|tu|ele|ela|nós|vós|eles|elas|meu|teu|seu|nosso|vosso|seu|tempo|ano|dia|casa|vida|mundo|país|cidade|trabalho|pessoa|homem|mulher|criança|parte|lugar|forma|caso|grupo|problema|mão|olho|água|fogo|terra|ar|sol|lua|estrela|céu|mar|rio|montanha|árvore|flor|animal|cão|gato|pássaro|peixe|comida|pão|água|leite|café|chá|cerveja|vinho|carne|frango|peixe|verdura|fruta|maçã|laranja|banana|limão|tomate|batata|arroz|massa|queijo|ovo|açúcar|sal|azeite|manteiga|gelado|chocolate|doce|amargo|salgado|picante|quente|frio|grande|pequeno|alto|baixo|comprido|curto|largo|estreito|grosso|fino|pesado|leve|duro|mole|liso|rugoso|limpo|sujo|novo|velho|jovem|velho|bom|mau|bonito|feio|fácil|difícil|rápido|lento|forte|fraco|rico|pobre|feliz|triste|contente|zangado|surpreso|assustado|cansado|doente|saudável|com fome|com sede|calor|frio|dor|amor|ódio|medo|esperança|sonho|realidade|verdade|mentira|paz|guerra|liberdade|escravidão|justiça|injustiça|bem|mal|certo|errado|possível|impossível|necessário|desnecessário|importante|senza importância|interessante|aborrecido|divertido|sério|cómico|trágico|romântico|misterioso|aventureiro|perigoso|seguro|arriscado|confiável|não confiável|honesto|desonesto|amável|cruel|generoso|egoísta|paciente|impaciente|corajoso|codardo|inteligente|estúpido|sábio|ignorante|educado|mal educado|cortês|grosseiro|simpático|antipático|tímido|extrovertido|otimista|pessimista|realista|idealista|conservador|liberal|tradizionale|moderno|classico|contemporaneo|antigo|recente|passado|presente|futuro|antes|depois|durante|enquanto|até|desde|para|por|sem|com|contra|entre|sobre|sob|dentro|fora|perto|longe|aqui|ali|onde|quando|como|porquê|o que|quem|qual|quanto|quando|dove|sim|não|talvez|certamente|provavelmente|possivelmente|definitivamente|absolutamente|completamente|totalmente|parcialmente|quase|apenas|só|unicamente|especialmente|particularmente|geralmente|normalmente|habitualmente|frequentemente|raramente|nunca|sempre|às vezes|de vez em quando|todos os dias|cada dia|uma vez|duas vezes|muitas vezes|poucas vezes|primeira vez|última vez|próxima vez|esta vez|essa vez|agora|então|depois|antes|entretanto|ao mesmo tempo|no fim|no início|no meio|finalmente|enfim|em conclusão|em resumo|por exemplo|ou seja|além disso|também|também não|no entanto|contudo|pelo contrário|em contrapartida|por outro lado|de facto|na realidade|efetivamente|certamente|obviamente|claramente|naturalmente|logicamente|razoavelmente|compreensivelmente|felizmente|infelizmente|por sorte|por azar|graças a deus|oxalá|se deus quiser|meu deus|por favor|obrigado|de nada|desculpa|desculpe|lamento|não há problema|está bem|muito bem|perfeito|excelente|fantástico|maravilhoso|incrível|impressionante|surpreendente|extraordinário|espetacular|magnífico|estupendo|genial|fabuloso|ótimo|muito bom|péssimo|horrível|terrível|assustador|nojento|repugnante|desagradável|chato|aborrecido|irritante|insuportável|inaceitável|intolerável)/)) {
-      setDetectedLanguage("portuguese")
-      return
-    }
-
-    // Default to English if no other language detected
-    setDetectedLanguage("english")
-  }
+  // Removed naive client-side language detection; using server-side detection via /api/detect-language.
 
   // Simulate text analysis
   const analyzeText = async () => {
@@ -152,7 +153,7 @@ export default function LanguageLearnerApp() {
         body: JSON.stringify({
           text: inputText,
           model: selectedModel,
-          language: selectedLanguage
+          language: autoDetect && detectedLanguage ? detectedLanguage : selectedLanguage
         })
       });
 
@@ -411,10 +412,19 @@ export default function LanguageLearnerApp() {
                     </SelectContent>
                   </Select>
 
-                  {autoDetect && detectedLanguage && (
-                    <div className="flex items-center space-x-2 text-xs text-green-600">
-                      <Zap className="h-3 w-3" />
-                      <span>Auto-detected: {languages.find(l => l.value === detectedLanguage)?.label}</span>
+                  {autoDetect && (
+                    <div className="flex items-center space-x-2 text-xs">
+                      {isDetecting ? (
+                        <>
+                          <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+                          <span className="text-gray-600">Detecting language...</span>
+                        </>
+                      ) : detectedLanguage ? (
+                        <>
+                          <Zap className="h-3 w-3 text-green-600" />
+                          <span className="text-green-600">Auto-detected: {languages.find(l => l.value === detectedLanguage)?.label}</span>
+                        </>
+                      ) : null}
                     </div>
                   )}
                 </div>
