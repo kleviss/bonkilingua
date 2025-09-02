@@ -42,7 +42,17 @@ export async function POST(req: Request) {
 
     const raw = completion.choices[0].message?.content?.trim().toLowerCase() ?? "";
     const match = raw.match(/english|spanish|french|german|italian|portuguese|unknown/);
-    const language = match ? match[0] : "unknown";
+    let language = match ? match[0] : "unknown";
+
+    // Fallback: if unknown, bias to english when the text looks like English
+    if (language === "unknown") {
+      const isAsciiOnly = !/[^\x00-\x7F]/.test(trimmed);
+      const englishStopwordPattern =
+        /\b(the|and|is|are|to|of|in|that|for|with|on|it|this|as|was|were|be|have|has|had|at|by|from)\b/i;
+      if (isAsciiOnly && englishStopwordPattern.test(trimmed)) {
+        language = "english";
+      }
+    }
 
     return NextResponse.json({ language });
   } catch (error) {

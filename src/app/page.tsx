@@ -22,6 +22,7 @@ import { AVAILABLE_MODELS } from "@/constants/models"
 import { Button } from "./components/ui/button"
 import Link from "next/link";
 import { Progress } from "@radix-ui/react-progress"
+import { Sparkles } from "./components/ui/sparkles"
 import { Textarea } from "./components/ui/textarea"
 
 interface UserData {
@@ -63,6 +64,7 @@ export default function LanguageLearnerApp() {
   // Track copy status for the "Copy Corrected Text" button
   const [isCopied, setIsCopied] = useState(false)
   const [isDetecting, setIsDetecting] = useState(false)
+  const [showSparkles, setShowSparkles] = useState(false)
 
   const [bonkActivity] = useState<BonkActivity[]>([
     { id: "1", amount: 100, description: "Completed daily challenge", type: "challenge" },
@@ -350,6 +352,7 @@ export default function LanguageLearnerApp() {
   // Reset copied state when the corrected text changes (e.g., after a new correction)
   useEffect(() => {
     setIsCopied(false)
+    setShowSparkles(false)
   }, [correctedText])
 
   if (activeTab === "home") {
@@ -361,7 +364,6 @@ export default function LanguageLearnerApp() {
             <h1 className="text-lg font-semibold text-gray-900">Bonkilingo</h1>
             <button onClick={() => {
               setIsSidebarOpen(true);
-              console.log("sidebar open");
             }}>
               <Menu className="h-5 w-5 text-gray-600" />
             </button>
@@ -465,18 +467,24 @@ export default function LanguageLearnerApp() {
               <Card className="bg-green-50 border-green-200">
                 <CardContent className="p-4">
                   <p className="text-gray-700 text-sm leading-relaxed">{correctedText}</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={`mt-3 w-full border-green-300 text-green-700 hover:bg-green-100 ${isCopied ? 'animate-bounce border-green-500 bg-green-50' : ''}`}
-                    onClick={() => {
-                      navigator.clipboard.writeText(correctedText)
-                      setIsCopied(true)
-                      setTimeout(() => setIsCopied(false), 2000)
-                    }}
-                  >
-                    {isCopied ? "Copied!" : "Copy Corrected Text"}
-                  </Button>
+                  <Sparkles isActive={showSparkles} color="#10b981" density={10}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={`mt-3 w-full border-green-300 text-green-700 hover:bg-green-100 ${isCopied ? 'border-green-500 bg-green-50' : ''}`}
+                      onClick={() => {
+                        navigator.clipboard.writeText(correctedText)
+                        setIsCopied(true)
+                        setShowSparkles(true)
+                        setTimeout(() => {
+                          setIsCopied(false)
+                          setShowSparkles(false)
+                        }, 2000)
+                      }}
+                    >
+                      {isCopied ? "Copied!" : "Copy Corrected Text"}
+                    </Button>
+                  </Sparkles>
                   <Button
                     variant="outline"
                     size="sm"
