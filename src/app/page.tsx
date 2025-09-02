@@ -65,6 +65,12 @@ export default function LanguageLearnerApp() {
   const [isCopied, setIsCopied] = useState(false)
   const [isDetecting, setIsDetecting] = useState(false)
   const [showSparkles, setShowSparkles] = useState(false)
+  const [activeLearnTool, setActiveLearnTool] = useState<string | null>(null)
+  const [situationInput, setSituationInput] = useState("")
+  const [tinyLessonResult, setTinyLessonResult] = useState<string | null>(null)
+  const [isLessonLoading, setIsLessonLoading] = useState(false)
+  const [savedLessons, setSavedLessons] = useState<Array<{ id: string, title: string, content: string, date: string }>>([])
+  const [showFlashcards, setShowFlashcards] = useState(false)
 
   const [bonkActivity] = useState<BonkActivity[]>([
     { id: "1", amount: 100, description: "Completed daily challenge", type: "challenge" },
@@ -72,12 +78,56 @@ export default function LanguageLearnerApp() {
     { id: "3", amount: 200, description: "Streak bonus", type: "streak" }
   ])
 
-  // Load user data from localStorage on mount
+  // Load user data and saved lessons from localStorage on mount
   useEffect(() => {
     const savedData = localStorage.getItem("languageLearnerData")
     if (savedData) {
       const parsed = JSON.parse(savedData)
       setUserData(prev => ({ ...prev, ...parsed }))
+    }
+
+    const savedLessonsData = localStorage.getItem("savedLessons")
+    if (savedLessonsData) {
+      try {
+        const parsed = JSON.parse(savedLessonsData)
+        if (Array.isArray(parsed)) {
+          setSavedLessons(parsed)
+        }
+      } catch (error) {
+        console.error("Failed to parse saved lessons", error)
+      }
+    }
+
+    // Check for redirection from explanation page
+    const activeTabFromStorage = localStorage.getItem("activeTab")
+    const activeLearnToolFromStorage = localStorage.getItem("activeLearnTool")
+    const viewLessonId = localStorage.getItem("viewLessonId")
+
+    if (activeTabFromStorage === "learn") {
+      setActiveTab("learn")
+
+      if (activeLearnToolFromStorage === "flashcards") {
+        setActiveLearnTool("flashcards")
+
+        // If we have a specific lesson to view
+        if (viewLessonId && savedLessonsData) {
+          try {
+            const lessons = JSON.parse(savedLessonsData) as Array<{ id: string, title: string, content: string, date: string }>
+            const lesson = lessons.find(l => l.id === viewLessonId)
+            if (lesson) {
+              setShowFlashcards(true)
+              setTinyLessonResult(lesson.content)
+            }
+          } catch (error) {
+            console.error("Failed to find specific lesson", error)
+          }
+        }
+      }
+
+      // Clear the redirection data
+      localStorage.removeItem("activeTab")
+      localStorage.removeItem("activeLearnTool")
+      localStorage.removeItem("viewLessonId")
     }
   }, [])
 
@@ -186,6 +236,76 @@ export default function LanguageLearnerApp() {
     }
   };
 
+  // Handle Tiny Lesson tool
+  const handleTinyLesson = async () => {
+    if (!situationInput.trim()) return;
+
+    setIsLessonLoading(true);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: "user",
+              content: `I need vocabulary, phrases, and grammar tips for this situation in ${selectedLanguage}: ${situationInput}`
+            }
+          ],
+          model: selectedModel,
+          systemPrompt: "You are a helpful language tutor. Provide relevant vocabulary, useful phrases, and grammar tips for the situation described by the user. Format your response in three clear sections: 1) Key Vocabulary (10-15 relevant words with translations), 2) Useful Phrases (5-8 practical expressions with translations), and 3) Grammar Tips (2-3 relevant grammar points with simple examples). Keep your response concise and focused on practical language use."
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch tiny lesson");
+      }
+
+      const data = await res.json();
+      setTinyLessonResult(data.reply);
+
+      // Award BONK points
+      const bonkEarned = Math.floor(Math.random() * 15) + 10;
+      const newUserData = {
+        ...userData,
+        bonkPoints: userData.bonkPoints + bonkEarned,
+      };
+
+      saveUserData(newUserData);
+    } catch (error) {
+      console.error(error);
+      alert("Something went wrong while generating your lesson. Please try again.");
+    } finally {
+      setIsLessonLoading(false);
+    }
+  };
+
+  // Save lesson to localStorage
+  const saveLesson = () => {
+    if (!tinyLessonResult || !situationInput) return;
+
+    const newLesson = {
+      id: Date.now().toString(),
+      title: situationInput.length > 30 ? situationInput.substring(0, 30) + '...' : situationInput,
+      content: tinyLessonResult,
+      date: new Date().toLocaleDateString()
+    };
+
+    const updatedLessons = [...savedLessons, newLesson];
+    setSavedLessons(updatedLessons);
+    localStorage.setItem('savedLessons', JSON.stringify(updatedLessons));
+
+    // Award BONK points for saving a lesson
+    const bonkEarned = 5;
+    const newUserData = {
+      ...userData,
+      bonkPoints: userData.bonkPoints + bonkEarned,
+    };
+    saveUserData(newUserData);
+
+    alert(`Lesson saved! +${bonkEarned} BONK points awarded.`);
+  };
+
   const languages = [
     { value: "english", label: "English" },
     { value: "spanish", label: "Spanish" },
@@ -254,6 +374,30 @@ export default function LanguageLearnerApp() {
       description: "Enhance your French with complex sentences",
       image: "🗼",
       color: "bg-purple-100"
+    }
+  ]
+
+  const experiments = [
+    {
+      id: "001",
+      title: "Tiny Lesson",
+      description: "Find relevant vocabulary, phrases, and grammar tips for any situation.",
+      image: "📚",
+      color: "bg-blue-100"
+    },
+    {
+      id: "002",
+      title: "Slang Hang",
+      description: "Learn expressions, idioms, and regional slang from a generated conversation between native speakers.",
+      image: "💬",
+      color: "bg-purple-100"
+    },
+    {
+      id: "003",
+      title: "Word Cam",
+      description: "Snap a photo to learn how to speak about your surroundings.",
+      image: "📸",
+      color: "bg-green-100"
     }
   ]
 
@@ -520,63 +664,271 @@ export default function LanguageLearnerApp() {
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-100 bg-white">
           <div className="flex items-center justify-between">
-            <h1 className="text-lg font-semibold text-gray-900">Learn</h1>
+            {activeLearnTool ? (
+              <div className="flex items-center">
+                <button onClick={() => {
+                  setActiveLearnTool(null);
+                  setTinyLessonResult(null);
+                  setSituationInput("");
+                  setShowFlashcards(false);
+                }} className="mr-2">
+                  <ArrowLeft className="h-5 w-5 text-gray-600" />
+                </button>
+                <h1 className="text-lg font-semibold text-gray-900">
+                  {activeLearnTool === "tinyLesson" ? "Tiny Lesson" :
+                    activeLearnTool === "flashcards" ? "My Flashcards" : "Learn"}
+                </h1>
+              </div>
+            ) : (
+              <h1 className="text-lg font-semibold text-gray-900">Learn</h1>
+            )}
             <button onClick={() => setIsSidebarOpen(true)}>
               <Menu className="h-5 w-5 text-gray-600" />
             </button>
           </div>
         </div>
 
-        <div className="p-6 space-y-8 flex-1 overflow-y-auto pb-20">
-          {/* Personalized Learning */}
-          <div>
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Personalized Learning</h2>
-            <div className="space-y-4">
-              {learningModules.map((module, index) => (
-                <Card key={index} className="border-gray-200 hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-4">
-                      <div className={`w-16 h-16 ${module.color} rounded-xl flex items-center justify-center text-2xl`}>
-                        {module.image}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900">{module.title}</h3>
-                        <p className="text-sm text-gray-600 mt-1">{module.description}</p>
-                        <Button variant="outline" size="sm" className="mt-2 text-xs">
-                          Start
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
+        <div className="p-6 space-y-6 flex-1 overflow-y-auto pb-20">
+          {activeLearnTool === "tinyLesson" ? (
+            // Tiny Lesson tool
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Tiny Lesson</h2>
+                <p className="text-sm text-gray-600 mt-1">Find relevant vocabulary, phrases, and grammar tips for any situation.</p>
+              </div>
 
-          {/* Lessons */}
-          <div>
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Lessons</h2>
-            <div className="space-y-4">
-              {lessons.map((lesson, index) => (
-                <Card key={index} className="border-gray-200 hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-4">
-                      <div className={`w-16 h-16 ${lesson.color} rounded-xl flex items-center justify-center text-2xl`}>
-                        {lesson.image}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label htmlFor="situation" className="block text-sm font-medium text-gray-700">
+                    Describe a situation or topic you want to learn about
+                  </label>
+                  <Textarea
+                    id="situation"
+                    placeholder="e.g., Ordering food at a restaurant, asking for directions, talking about the weather..."
+                    value={situationInput}
+                    onChange={(e: { target: { value: SetStateAction<string> } }) => setSituationInput(e.target.value)}
+                    className="min-h-[100px] bg-white border-gray-200 resize-none"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="language" className="block text-sm font-medium text-gray-700">
+                    Language
+                  </label>
+                  <Select
+                    value={selectedLanguage}
+                    onValueChange={(value: SetStateAction<string>) => setSelectedLanguage(value)}
+                  >
+                    <SelectTrigger className="bg-white border-gray-200">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {languages.map((lang) => (
+                        <SelectItem key={lang.value} value={lang.value}>
+                          {lang.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button
+                  onClick={handleTinyLesson}
+                  disabled={!situationInput.trim() || isLessonLoading}
+                  className="w-full h-12 bg-yellow-500 hover:bg-yellow-600 text-black font-semibold"
+                >
+                  {isLessonLoading ? "Generating..." : "Generate Tiny Lesson"}
+                </Button>
+
+                {tinyLessonResult && (
+                  <Card className="bg-blue-50 border-blue-200 mt-6">
+                    <CardContent className="p-4">
+                      <div className="prose prose-sm max-w-none">
+                        <div className="whitespace-pre-wrap">{tinyLessonResult}</div>
                       </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900">{lesson.title}</h3>
-                        <p className="text-sm text-gray-600 mt-1">{lesson.description}</p>
-                        <Button variant="outline" size="sm" className="mt-2 text-xs">
-                          Start
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-4 w-full border-blue-300 text-blue-700 hover:bg-blue-100"
+                        onClick={saveLesson}
+                      >
+                        Save to My Cheatsheet
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </div>
+          ) : activeLearnTool === "flashcards" ? (
+            // Flashcards/Cheatsheet view
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">My Language Cheatsheet</h2>
+                <p className="text-sm text-gray-600 mt-1">Your saved lessons and vocabulary</p>
+              </div>
+
+              {savedLessons.length > 0 ? (
+                <div className="space-y-4">
+                  {savedLessons.map((lesson) => (
+                    <Card key={lesson.id} className="border-gray-200">
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-semibold text-gray-900">{lesson.title}</h3>
+                            <p className="text-xs text-gray-500 mt-1">Saved on {lesson.date}</p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const updatedLessons = savedLessons.filter(l => l.id !== lesson.id);
+                              setSavedLessons(updatedLessons);
+                              localStorage.setItem('savedLessons', JSON.stringify(updatedLessons));
+                            }}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-2 w-full"
+                          onClick={() => {
+                            setShowFlashcards(true);
+                            setTinyLessonResult(lesson.content);
+                          }}
+                        >
+                          View
                         </Button>
-                      </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-10">
+                  <p className="text-gray-500">No saved lessons yet. Create a Tiny Lesson to get started!</p>
+                  <Button
+                    className="mt-4"
+                    onClick={() => setActiveLearnTool("tinyLesson")}
+                  >
+                    Create Lesson
+                  </Button>
+                </div>
+              )}
+
+              {showFlashcards && tinyLessonResult && (
+                <Card className="bg-blue-50 border-blue-200 mt-6">
+                  <CardContent className="p-4">
+                    <div className="prose prose-sm max-w-none">
+                      <div className="whitespace-pre-wrap">{tinyLessonResult}</div>
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-4 w-full"
+                      onClick={() => setShowFlashcards(false)}
+                    >
+                      Close
+                    </Button>
                   </CardContent>
                 </Card>
-              ))}
+              )}
             </div>
-          </div>
+          ) : (
+            // Main Learn tab
+            <>
+              {/* Learning Tools */}
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-6">Learning Tools</h2>
+                <div className="space-y-4">
+                  <Card className="border-gray-200 overflow-hidden">
+                    <CardContent className="p-0">
+                      <div className="bg-blue-100 p-4">
+                        <h3 className="text-lg font-bold text-gray-900">Tiny Lesson</h3>
+                        <p className="text-sm text-gray-700 mt-1">Get vocabulary, phrases, and grammar tips for any situation.</p>
+                      </div>
+                      <div className="p-4 bg-white">
+                        <Button
+                          className="w-full bg-black hover:bg-gray-800 text-white"
+                          onClick={() => setActiveLearnTool("tinyLesson")}
+                        >
+                          Create Lesson
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-gray-200 overflow-hidden">
+                    <CardContent className="p-0">
+                      <div className="bg-green-100 p-4">
+                        <h3 className="text-lg font-bold text-gray-900">My Cheatsheet</h3>
+                        <p className="text-sm text-gray-700 mt-1">Access your saved lessons and vocabulary flashcards.</p>
+                      </div>
+                      <div className="p-4 bg-white">
+                        <Button
+                          className="w-full bg-black hover:bg-gray-800 text-white"
+                          onClick={() => setActiveLearnTool("flashcards")}
+                        >
+                          View Cheatsheet
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+
+              {/* Personalized Learning */}
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-6">Personalized Learning</h2>
+                <div className="space-y-4">
+                  {learningModules.map((module, index) => (
+                    <Card key={index} className="border-gray-200 hover:shadow-md transition-shadow">
+                      <CardContent className="p-4">
+                        <div className="flex items-center space-x-4">
+                          <div className={`w-16 h-16 ${module.color} rounded-xl flex items-center justify-center text-2xl`}>
+                            {module.image}
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-gray-900">{module.title}</h3>
+                            <p className="text-sm text-gray-600 mt-1">{module.description}</p>
+                            <Button variant="outline" size="sm" className="mt-2 text-xs">
+                              Start
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              {/* Lessons */}
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-6">Lessons</h2>
+                <div className="space-y-4">
+                  {lessons.map((lesson, index) => (
+                    <Card key={index} className="border-gray-200 hover:shadow-md transition-shadow">
+                      <CardContent className="p-4">
+                        <div className="flex items-center space-x-4">
+                          <div className={`w-16 h-16 ${lesson.color} rounded-xl flex items-center justify-center text-2xl`}>
+                            {lesson.image}
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-gray-900">{lesson.title}</h3>
+                            <p className="text-sm text-gray-600 mt-1">{lesson.description}</p>
+                            <Button variant="outline" size="sm" className="mt-2 text-xs">
+                              Start
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {isSidebarOpen && <Sidebar />}
@@ -672,6 +1024,8 @@ export default function LanguageLearnerApp() {
       </>
     )
   }
+
+
 
   return null
 }

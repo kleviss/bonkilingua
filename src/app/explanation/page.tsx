@@ -1,12 +1,13 @@
 "use client"
 
+import { ArrowLeft, Lightbulb } from "lucide-react"
 import { Card, CardContent } from "../components/ui/card"
 import { useEffect, useRef, useState } from "react"
 
-import { ArrowLeft } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { EXPLANATION_SYSTEM_PROMPT } from "@/lib/prompts"
 import Link from "next/link"
+import { Sparkles } from "../components/ui/sparkles"
 import { Textarea } from "../components/ui/textarea"
 
 interface Message {
@@ -26,6 +27,10 @@ export default function ExplanationPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   const [input, setInput] = useState("")
+  const [isSparkleActive, setIsSparkleActive] = useState(false)
+  const [isCreatingLesson, setIsCreatingLesson] = useState(false)
+  const [lessonCreated, setLessonCreated] = useState(false)
+  const [createdLessonId, setCreatedLessonId] = useState<string | null>(null)
 
   // Load the corrected text and corresponding chat history from localStorage
   useEffect(() => {
@@ -139,6 +144,76 @@ export default function ExplanationPage() {
     }
   };
 
+  // Create a tiny lesson from the conversation summary
+  const createTinyLesson = async () => {
+    setIsCreatingLesson(true);
+    setIsSparkleActive(true);
+
+    try {
+      // Extract the conversation content
+      const conversationContent = messages.map(m =>
+        `${m.sender === 'user' ? 'User' : 'Tutor'}: ${m.text}`
+      ).join('\n\n');
+
+      // Create a prompt for summarizing the conversation
+      const prompt = `Based on this conversation about language learning and corrections, create a concise learning summary with key vocabulary, useful phrases, and grammar tips:\n\n${conversationContent}`;
+
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [{ role: "user", content: prompt }],
+          systemPrompt: "You are a helpful language tutor. Create a concise learning summary from this conversation. Format your response in three clear sections: 1) Key Vocabulary (5-8 relevant words with translations), 2) Useful Phrases (3-5 practical expressions), and 3) Grammar Tips (1-2 relevant grammar points with simple examples). Keep your response concise and focused on practical language use."
+        })
+      });
+
+      if (!res.ok) throw new Error("Failed to create lesson");
+      const data = await res.json();
+
+      // Save the lesson to localStorage
+      const savedLessonsData = localStorage.getItem("savedLessons");
+      const savedLessons = savedLessonsData ? JSON.parse(savedLessonsData) : [];
+
+      const lessonId = Date.now().toString();
+      const newLesson = {
+        id: lessonId,
+        title: `Lesson from conversation: ${new Date().toLocaleDateString()}`,
+        content: data.reply,
+        date: new Date().toLocaleDateString()
+      };
+
+      const updatedLessons = [...savedLessons, newLesson];
+      localStorage.setItem("savedLessons", JSON.stringify(updatedLessons));
+
+      // Store the lesson ID for redirection
+      setCreatedLessonId(lessonId);
+
+      // Award BONK points
+      const userData = localStorage.getItem("languageLearnerData");
+      if (userData) {
+        const parsedUserData = JSON.parse(userData);
+        const bonkEarned = 15;
+        const newUserData = {
+          ...parsedUserData,
+          bonkPoints: (parsedUserData.bonkPoints || 0) + bonkEarned
+        };
+        localStorage.setItem("languageLearnerData", JSON.stringify(newUserData));
+      }
+
+      setLessonCreated(true);
+      setTimeout(() => {
+        setIsSparkleActive(false);
+      }, 1500);
+
+    } catch (error) {
+      console.error(error);
+      alert("Unable to create lesson. Please try again later.");
+      setIsSparkleActive(false);
+    } finally {
+      setIsCreatingLesson(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
@@ -171,6 +246,27 @@ export default function ExplanationPage() {
               {msg.text}
             </div>
           ))}
+
+          {/* Lesson created confirmation with redirect button */}
+          {lessonCreated && (
+            <div className="self-center bg-green-100 text-green-800 p-4 rounded-lg text-sm space-y-3">
+              <p>✨ Lesson created and saved to your cheatsheet! +15 BONK points awarded.</p>
+              <Link href="/" className="block w-full">
+                <Button
+                  className="w-full bg-green-600 hover:bg-green-700 text-white"
+                  onClick={() => {
+                    // Set the active tab to "learn" and flashcards tool in localStorage
+                    localStorage.setItem("activeTab", "learn");
+                    localStorage.setItem("activeLearnTool", "flashcards");
+                    localStorage.setItem("viewLessonId", createdLessonId || "");
+                  }}
+                >
+                  View Lesson in My Cheatsheet
+                </Button>
+              </Link>
+            </div>
+          )}
+
           {/* Sentinel div for auto scroll */}
           <div ref={messagesEndRef} />
         </div>
@@ -178,6 +274,23 @@ export default function ExplanationPage() {
 
       {/* Chat Input */}
       <div className="p-4 border-t bg-white space-y-2">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex-1"></div>
+          {messages.length > 0 && !lessonCreated && (
+            <Sparkles isActive={isSparkleActive} color="#fbbf24" density={8}>
+              <Button
+                onClick={createTinyLesson}
+                disabled={isCreatingLesson}
+                variant="outline"
+                size="sm"
+                className="text-xs text-yellow-600 border-yellow-300 hover:bg-yellow-50"
+              >
+                <Lightbulb className="h-3 w-3 mr-1" />
+                {isCreatingLesson ? "Creating..." : "Create Lesson"}
+              </Button>
+            </Sparkles>
+          )}
+        </div>
         <Textarea
           placeholder="Ask a question..."
           value={input}
