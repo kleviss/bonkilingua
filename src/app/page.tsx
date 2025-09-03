@@ -642,11 +642,15 @@ export default function LanguageLearnerApp() {
                   >
                     <Link href="/explanation">Show Explanation</Link>
                   </Button>
+                  <div className="mt-2 text-center">
+                    <Link href="/history" className="text-xs text-yellow-600 hover:underline">View correction history</Link>
+                  </div>
                 </CardContent>
               </Card>
             ) : (
               <div className="text-center py-8 text-gray-500">
                 <p className="text-sm">No corrections yet. Tap 'Correct Text' to get started.</p>
+                <p className="text-sm mt-2">Looking for history? <Link href="/history" className="text-yellow-600 hover:underline">Click here</Link> to view past corrections.</p>
               </div>
             )}
           </div>
