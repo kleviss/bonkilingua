@@ -1,42 +1,24 @@
 import "./globals.css";
 
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
+import { AuthProvider } from "@/lib/auth";
 
-import ClientBody from "./ClientBody";
-import type { Metadata } from "next";
-import Script from "next/script";
+const inter = Inter({ subsets: ["latin"] });
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata: Metadata = {
-  title: "BONKILINGO",
-  description:
-    "BONKILINGO is a mobile app for language learners featuring AI-powered text correction and a BONK rewards system.",
+export const metadata = {
+  title: "Bonkilingua",
+  description: "Language learning app with AI-powered corrections",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <head>
-        <Script
-          crossOrigin="anonymous"
-          src="//unpkg.com/same-runtime/dist/index.global.js"
-        />
-      </head>
-      <body suppressHydrationWarning className="antialiased">
-        <ClientBody>{children}</ClientBody>
+    <html lang='en'>
+      <body className={inter.className}>
+        <AuthProvider>
+          <div className='flex justify-center min-h-screen bg-gray-50'>
+            <div className='w-full max-w-md bg-white shadow-sm min-h-screen flex flex-col'>{children}</div>
+          </div>
+        </AuthProvider>
       </body>
     </html>
   );

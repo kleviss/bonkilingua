@@ -1,86 +1,110 @@
-# BONKILINGO
+# Bonkilingua Web App
 
-BONKILINGO is a mobile app designed for language learners, featuring a ChatGPT-based text correction tool. The core functionality allows users to input text in any language and receive a polished, corrected version, which can be easily copied for use elsewhere.
+A language learning application with AI-powered corrections and personalized learning tools.
 
 ## Features
 
-### Text Correction
+- AI-powered text corrections
+- Language detection
+- Personalized learning tools
+- Rewards system
+- User authentication
+- Database storage for chat history and lessons
 
-- Input text in any language you are learning.
-- Advanced AI analyzes and corrects grammar, spelling, syntax, and style errors.
-- Corrected text is displayed clearly, with an option to copy to clipboard.
+## Tech Stack
 
-### BONK Rewards System
+- Next.js 15
+- React 18
+- Tailwind CSS
+- Supabase (Authentication & Database)
+- OpenAI API
 
-- Earn "BONK" points for each text correction session to gamify the experience.
-- Reward dashboard shows accumulated BONK points and potential redeemable benefits (e.g., premium features, language exercises, cosmetic upgrades).
-- The reward system encourages frequent app usage without unnecessary complexity.
-
-### Language Learning Tab
-
-- Secondary tab for language learning based on user-provided prompts or corrected texts.
-- Personalized language exercises (e.g., vocabulary quizzes, sentence construction tasks) generated from user input or correction history.
-- Lessons tailored to the user’s proficiency level and target language.
-
-### Additional Features
-
-- Simple, intuitive UI/UX suitable for all language learners.
-- Support for multiple languages for text input and correction.
-- Optimized for mobile use, with offline capabilities for basic corrections.
-- Progress tracker to show improvements in language skills over time.
-- Engaging, user-friendly, and motivating, with the BONK rewards system as the central incentive for repeated use.
-
-## Getting Started
-
-This project uses [Next.js](https://nextjs.org/) and [Tailwind CSS](https://tailwindcss.com/), and is managed with [Yarn](https://yarnpkg.com/).
+## Setup Instructions
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (v18 or later recommended)
-- [Yarn](https://yarnpkg.com/)
+- Node.js (v18 or later)
+- npm or yarn
+- Supabase account
+- OpenAI API key
 
-# Installation
+### Installation
 
-Install dependencies:
-
+1. Clone the repository:
 ```bash
+git clone <repository-url>
+cd bonkilingua-web-app
+```
+
+2. Install dependencies:
+```bash
+npm install
+# or
 yarn install
 ```
 
-### Running the Development Server
+3. Create a `.env.local` file in the root directory with the following variables:
+```
+OPENAI_API_KEY=your_openai_api_key_here
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url_here
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+```
 
-Start the app in development mode:
+4. Set up Supabase:
+   - Create a new project in Supabase
+   - Go to SQL Editor and run the SQL commands from `supabase/schema.sql`
+   - Enable Email Auth in Authentication settings
 
+5. Run the development server:
 ```bash
+npm run dev
+# or
 yarn dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser to view the app.
+6. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### Building for Production
+## Database Schema
 
-To build the app for production:
+The application uses Supabase as the database with the following tables:
 
-```bash
-yarn build
-```
+### profiles
+- `id`: UUID (primary key, references auth.users)
+- `email`: Text
+- `bonk_points`: Integer
+- `total_corrections`: Integer
+- `languages_learned`: Text Array
+- `streak_days`: Integer
+- `level`: Integer
+- `daily_challenge`: Boolean
+- `created_at`: Timestamp
+- `updated_at`: Timestamp
 
-To start the production server after building:
+### chat_sessions
+- `id`: UUID (primary key)
+- `user_id`: UUID (references auth.users)
+- `corrected_text`: Text
+- `input_text`: Text
+- `language`: Text
+- `model`: Text
+- `created_at`: Timestamp
 
-```bash
-yarn start
-```
+### saved_lessons
+- `id`: UUID (primary key)
+- `user_id`: UUID (references auth.users)
+- `title`: Text
+- `content`: Text
+- `created_at`: Timestamp
 
-### Linting and Formatting
+## Authentication
 
-To run type checking and linting:
+The app supports both authenticated and unauthenticated usage:
 
-```bash
-yarn lint
-```
+- **Authenticated Users**: Data is stored in the Supabase database
+- **Unauthenticated Users**: Data is stored in the browser's localStorage
 
-To format the codebase:
+When an unauthenticated user signs up or logs in, their localStorage data is synced to the database.
 
-```bash
-yarn format
-```
+## License
+
+[MIT](LICENSE)
