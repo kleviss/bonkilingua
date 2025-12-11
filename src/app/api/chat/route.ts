@@ -1,30 +1,33 @@
-import { EXPLANATION_SYSTEM_PROMPT } from '@/lib/prompts';
 import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Proxy to standalone backend
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
 
 export async function POST(req: Request) {
   try {
-    const { messages, model = 'gpt-3.5-turbo', systemPrompt } = await req.json();
+    const body = await req.json();
 
-    if (!Array.isArray(messages) || messages.length === 0) {
-      return NextResponse.json({ error: 'No messages provided' }, { status: 400 });
-    }
-
-    const completion = await openai.chat.completions.create({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt ?? EXPLANATION_SYSTEM_PROMPT },
-        ...messages,
-      ],
-      temperature: 0.7,
+    // Forward request to standalone backend
+    const response = await fetch(`${BACKEND_URL}/api/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
     });
 
-    const reply = completion.choices[0].message?.content?.trim();
-    return NextResponse.json({ reply });
+    const data = await response.json();
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: data.error || 'Backend request failed' },
+        { status: response.status }
+      );
+    }
+
+    return NextResponse.json(data);
   } catch (error) {
-    console.error(error);
+    console.error('Error proxying to backend:', error);
     const err = error as Error;
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
