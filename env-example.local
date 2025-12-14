@@ -1,4 +1,4 @@
-OPENAI_API_KEY=key_here
-NEXT_PUBLIC_SUPABASE_ANON_KEY=anon_key_here
-NEXT_PUBLIC_SUPABASE_URL=supebase_url_here
+OPENAI_API_KEY=your_openai_key_here
+NEXT_PUBLIC_SUPABASE_URL=https://muxrzymmzxqwemzursau.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
 BACKEND_URL=http://localhost:3001
