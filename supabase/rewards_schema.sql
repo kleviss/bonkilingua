@@ -236,3 +236,4 @@ insert into reward_config (id, amount, description) values
   ('min_withdrawal', 10000, 'Minimum amount for withdrawal')
 on conflict (id) do nothing;
 
+
