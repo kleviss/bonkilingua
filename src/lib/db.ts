@@ -1,5 +1,4 @@
-import { supabase } from "./supabase";
-import type { UserProfile, ChatSession, SavedLesson } from "./supabase";
+import { supabase, UserProfile, ChatSession, SavedLesson } from "./supabase";
 
 // User profile functions
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
@@ -90,7 +89,7 @@ export async function syncLocalStorageWithDatabase(userId: string) {
           corrected_text: session.correctedText,
           input_text: session.messages.find((m: { sender: string; text: string }) => m.sender === "user")?.text || "",
           language: "unknown", // We don't have this info in local storage
-          model: "gpt-4o-mini", // Default model
+          model: "gpt-3.5-turbo", // Default model
         });
       }
     }
