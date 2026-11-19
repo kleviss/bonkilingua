@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
+import { BACKEND_URL, describeBackendError } from "@/lib/backend";
 
 // Proxy to standalone backend
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
-
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -36,7 +35,6 @@ export async function POST(req: Request) {
     return NextResponse.json(data);
   } catch (error) {
     console.error("Error proxying to backend:", error);
-    const err = error as Error;
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: describeBackendError(error) }, { status: 500 });
   }
 }
