@@ -1,4 +1,5 @@
 import { supabase, UserProfile, ChatSession, SavedLesson } from "./supabase";
+import { DEFAULT_MODEL } from "@/constants/models";
 
 // User profile functions
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
@@ -89,7 +90,7 @@ export async function syncLocalStorageWithDatabase(userId: string) {
           corrected_text: session.correctedText,
           input_text: session.messages.find((m: { sender: string; text: string }) => m.sender === "user")?.text || "",
           language: "unknown", // We don't have this info in local storage
-          model: "gpt-3.5-turbo", // Default model
+          model: DEFAULT_MODEL, // Local history doesn't record the model used
         });
       }
     }

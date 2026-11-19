@@ -5,7 +5,7 @@ import { Card, CardContent } from "./components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./components/ui/select";
 import { SetStateAction, useEffect, useState } from "react";
 
-import { AVAILABLE_MODELS } from "@/constants/models";
+import { AVAILABLE_MODELS, DEFAULT_MODEL } from "@/constants/models";
 import { Button } from "./components/ui/button";
 import Link from "next/link";
 import { Progress } from "@radix-ui/react-progress";
@@ -51,7 +51,7 @@ export default function LanguageLearnerApp() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [autoDetect, setAutoDetect] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [selectedModel, setSelectedModel] = useState("gpt-3.5-turbo");
+  const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODEL);
   // Track copy status for the "Copy Corrected Text" button
   const [isCopied, setIsCopied] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);

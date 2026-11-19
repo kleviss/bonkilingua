@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { resolveModel } from "@/constants/models";
 
 // Proxy to standalone backend
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
@@ -13,7 +14,9 @@ export async function POST(req: Request) {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(body),
+      // Always send a model that is still offered: some callers send none,
+      // and a tab loaded before a model was retired may still send the old one.
+      body: JSON.stringify({ ...body, model: resolveModel(body?.model) }),
     });
 
     // Check content type before parsing JSON
