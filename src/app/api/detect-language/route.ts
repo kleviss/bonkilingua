@@ -1,40 +1,52 @@
 import { NextResponse } from "next/server";
-import { BACKEND_URL, describeBackendError } from "@/lib/backend";
+import { DEFAULT_MODEL } from "@/constants/models";
+import { getOpenAI } from "@/lib/openai";
 
-// Proxy to standalone backend
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const { text } = await req.json();
 
-    // Forward request to standalone backend
-    const response = await fetch(`${BACKEND_URL}/api/detect-language`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
+    if (!text || typeof text !== "string") {
+      return NextResponse.json({ error: "No text provided" }, { status: 400 });
+    }
+
+    const trimmed = text.trim();
+    if (trimmed.length < 15 || trimmed.split(/\s+/).length < 3) {
+      // Not enough signal to confidently detect
+      return NextResponse.json({ language: "unknown", confidence: 0 });
+    }
+
+    const completion = await getOpenAI().chat.completions.create({
+      model: DEFAULT_MODEL,
+      temperature: 0,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a strict language classifier. Respond with ONLY one token from this exact set: english|spanish|french|german|italian|portuguese|unknown. No explanation.",
+        },
+        { role: "user", content: trimmed },
+      ],
     });
 
-    // Check content type before parsing JSON
-    const contentType = response.headers.get("content-type");
-    let data;
+    const raw = completion.choices[0].message?.content?.trim().toLowerCase() ?? "";
+    const match = raw.match(/english|spanish|french|german|italian|portuguese|unknown/);
+    let language = match ? match[0] : "unknown";
 
-    if (contentType?.includes("application/json")) {
-      data = await response.json();
-    } else {
-      // If not JSON, read as text to see what we got
-      const text = await response.text();
-      console.error("Backend returned non-JSON response:", text.substring(0, 200));
-      return NextResponse.json({ error: `Backend returned invalid response: ${text.substring(0, 100)}` }, { status: 500 });
+    // Fallback: if unknown, bias to english when the text looks like English
+    if (language === "unknown") {
+      const isAsciiOnly = !/[^\x00-\x7F]/.test(trimmed);
+      const englishStopwordPattern =
+        /\b(the|and|is|are|to|of|in|that|for|with|on|it|this|as|was|were|be|have|has|had|at|by|from)\b/i;
+      if (isAsciiOnly && englishStopwordPattern.test(trimmed)) {
+        language = "english";
+      }
     }
 
-    if (!response.ok) {
-      return NextResponse.json({ error: data.error || "Backend request failed" }, { status: response.status });
-    }
-
-    return NextResponse.json(data);
+    return NextResponse.json({ language });
   } catch (error) {
-    console.error("Error proxying to backend:", error);
-    return NextResponse.json({ error: describeBackendError(error) }, { status: 500 });
+    console.error("Error in /api/detect-language:", error);
+    const err = error as Error;
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
