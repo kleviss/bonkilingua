@@ -287,7 +287,8 @@ export default function LanguageLearnerApp() {
             corrected_text: data.corrected,
             input_text: inputText,
             language: autoDetect && detectedLanguage ? detectedLanguage : selectedLanguage,
-            model: selectedModel,
+            // The model that answered, which is a backup if the chosen one failed.
+            model: data.model ?? selectedModel,
           });
         } catch (error) {
           console.error("Failed to save chat session", error);

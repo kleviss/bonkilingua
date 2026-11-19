@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { DEFAULT_MODEL } from "@/constants/models";
-import { getOpenAI } from "@/lib/openai";
+import { completeChat } from "@/lib/openai";
 
 export async function POST(req: Request) {
   try {
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ language: "unknown", confidence: 0 });
     }
 
-    const completion = await getOpenAI().chat.completions.create({
+    const answer = await completeChat({
       model: DEFAULT_MODEL,
       temperature: 0,
       messages: [
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
       ],
     });
 
-    const raw = completion.choices[0].message?.content?.trim().toLowerCase() ?? "";
+    const raw = answer.text.toLowerCase();
     const match = raw.match(/english|spanish|french|german|italian|portuguese|unknown/);
     let language = match ? match[0] : "unknown";
 
