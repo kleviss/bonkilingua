@@ -1,4 +1,5 @@
-import { supabase, UserProfile, ChatSession, SavedLesson } from "./supabase";
+import { supabase } from "./supabase";
+import type { UserProfile, ChatSession, SavedLesson } from "./supabase";
 
 // User profile functions
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
